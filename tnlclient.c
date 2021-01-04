@@ -6,9 +6,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#define BUFFER_MAX 256
+#define BUFFER_MAX 65535
 
-char *sendSshCmd(const char *host, const int port, const char *cmd) {
+char *tnl_ssh_cmd(const char *host, const int port, const char *cmd) {
     char buffer[BUFFER_MAX];
     char *command;
     char *receiveMessage = calloc(1, sizeof(char));
@@ -54,4 +54,114 @@ char *sendSshCmd(const char *host, const int port, const char *cmd) {
     printf("close Socket\n");
     close(sockfd);
     return receiveMessage;
+}
+
+int tnl_get_sftp(const char *host, const int port, const char *src, const char *dest){
+    char buffer[BUFFER_MAX];
+    char *command;
+    char *receiveMessage = calloc(1, sizeof(char));
+    int sockfd = 0, rc = 0, total_of_bytes = 0;
+    FILE *fp;
+
+    // Socket init
+    sockfd = socket(AF_INET , SOCK_STREAM , 0);
+
+    if (sockfd == -1){
+        fprintf(stderr, "Fail to create a socket.");
+        return;
+    }
+
+    struct sockaddr_in info;
+    bzero(&info,sizeof(info));
+    info.sin_family = PF_INET;
+
+    // Send from localhost of port 8700
+    info.sin_addr.s_addr = inet_addr(host);
+    info.sin_port = htons(port);
+
+    // Start to connect
+    int err = connect(sockfd,(struct sockaddr *)&info,sizeof(info));
+    if(err == -1){
+        fprintf(stderr, "Connection error");
+        return;
+    }
+
+    // Sending command
+    asprintf(&command, "g %s", src);
+    printf("send msg '%s'\n", command);
+    send(sockfd, command, strlen(command),0);
+    free(command);
+
+    if((fp = fopen(dest, "wb")) == NULL){
+        perror("fopen error\n");
+        exit(1);
+    }
+
+    while((rc = recv(sockfd, buffer, sizeof(buffer), 0)) > 0){
+        total_of_bytes += rc;
+        fwrite(buffer, sizeof(char), rc, fp);
+        memset(buffer,'\0', sizeof(buffer));      
+    }
+    printf("close file\n");
+    fclose(fp);
+    printf("close Socket\n");
+    close(sockfd);
+    return total_of_bytes;
+}
+
+int tnl_put_sftp(const char *host, const int port, const char *src, const char *dest){
+    char buffer[BUFFER_MAX];
+    char *receiveMessage = calloc(1, sizeof(char));
+    int sockfd = 0, rc = 0, total_of_bytes = 0, nread = 0;
+    FILE *fp;
+
+    // Socket init
+    sockfd = socket(AF_INET , SOCK_STREAM , 0);
+
+    if (sockfd == -1){
+        fprintf(stderr, "Fail to create a socket.");
+        return;
+    }
+
+    struct sockaddr_in info;
+    bzero(&info,sizeof(info));
+    info.sin_family = PF_INET;
+
+    // Send from localhost of port 8700
+    info.sin_addr.s_addr = inet_addr(host);
+    info.sin_port = htons(port);
+
+    // Start to connect
+    int err = connect(sockfd,(struct sockaddr *)&info,sizeof(info));
+    if(err == -1){
+        fprintf(stderr, "Connection error");
+        return;
+    }
+
+    if((fp = fopen(src, "rb")) == NULL){
+        perror("fopen error\n");
+        exit(1);
+    }
+    // Sending command
+    // memset(buffer,'\0', sizeof(buffer));
+    // buffer[0] = 'p';
+    // buffer[1] = ' ';
+    // memcpy(buffer+2, dest, strlen(dest));
+    // asprintf(&buffer, "p %s ", dest); // TODO: asprintf cannnot use with static array
+    // printf("send msg '%s'\n", buffer);
+    // send(sockfd, buffer, sizeof(buffer),0);
+    send(sockfd, "p /home/amas/README2020.md", 26,0);
+    memset(buffer,'\0', sizeof(buffer));
+
+    while(!feof(fp)){
+        nread = fread(buffer, sizeof(char), sizeof(buffer), fp);
+        send(sockfd, buffer, nread,0);
+        memset(buffer,'\0', sizeof(buffer));
+    }
+
+    printf("close file\n");
+    fclose(fp);
+    printf("close Socket\n");
+    close(sockfd);
+    return total_of_bytes;
 }

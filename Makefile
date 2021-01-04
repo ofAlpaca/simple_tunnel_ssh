@@ -16,3 +16,6 @@ example: $(TARGET_LIB)
 
 $(TARGET_LIB): tnlclient.c
 	$(CC) $(CFLAGS) -fPIC -shared -o $@ $^
+
+clean:
+	rm tnlssh example libtnlc.so
