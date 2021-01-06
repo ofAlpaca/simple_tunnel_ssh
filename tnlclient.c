@@ -150,11 +150,28 @@ int tnl_put_sftp(const char *host, const int port, const char *src, const char *
     // asprintf(&buffer, "p %s ", dest); // TODO: asprintf cannnot use with static array
     // printf("send msg '%s'\n", buffer);
     // send(sockfd, buffer, sizeof(buffer),0);
-    send(sockfd, "p /home/amas/README2020.md", 26,0);
+
+    snprintf(buffer,sizeof(buffer),"p %s",dest); 
+    // send(sockfd, "p /tmp/README2020.md", 26,0);
+    send(sockfd, buffer, 26,0);
     memset(buffer,'\0', sizeof(buffer));
+    
+    
+    while((rc = recv(sockfd, buffer, sizeof(buffer), 0)) > 0){
+        // total_of_bytes += rc;
+        // fwrite(buffer, sizeof(char), rc, fp);
+        // memset(buffer,'\0', sizeof(buffer));      
+        if(strstr(buffer,"start")){
+            printf("start\n");
+            break;
+        }
+        
+    }
 
     while(!feof(fp)){
         nread = fread(buffer, sizeof(char), sizeof(buffer), fp);
+        
+        // printf("%s\n",buffer);
         send(sockfd, buffer, nread,0);
         memset(buffer,'\0', sizeof(buffer));
     }

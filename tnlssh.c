@@ -118,22 +118,36 @@ int sftp_get_file(ssh_session session, sftp_session sftp, const char* file_src){
   return rc;
 }
 
-int sftp_put_file(ssh_session session, sftp_session sftp, const char* file_dest, FILE *fp){
+// int sftp_put_file(int clientSockfd,ssh_session session, sftp_session sftp, const char* file_dest, FILE *fp){
+int sftp_put_file(int clientSockfd, ssh_session session, sftp_session sftp, const char* file_dest){
+  
+    
+
+  // int access_type ;
   int access_type = O_WRONLY|O_CREAT|O_TRUNC;
+  // int access_type = O_WRONLY|O_CREAT;
   sftp_file file;
   char buffer[BUFFER_MAX];
   int nbytes, nread, rc;
- 
-  file = sftp_open(sftp, file_dest, access_type, 0); // read the file by sftp
+  file = sftp_open(sftp, file_dest, access_type, S_IRWXU); // read the file by sftp
   if (file == NULL) {
-      fprintf(stderr, "Can't open file for reading: %s\n", ssh_get_error(session));
+      // fprintf(stderr, "Can't open file for reading: %s\n", sftp_get_error(sftp));
       return SSH_ERROR;
   }
- 
+  
+  // ask client send file
+  char* start_key = "start";
+  send(clientSockfd, start_key, strlen(start_key),0);
+
+  char inputBuffer[256];
   // read the fp as long as it has remaining data
-  while ((nread = fread(buffer, 1, sizeof(buffer), fp)) > 0) {
+  // while ((nread = fread(buffer, 1, sizeof(buffer), fp)) > 0) {
+  while ((nread = recv(clientSockfd, inputBuffer, sizeof(inputBuffer), 0)) > 0) {
       // write through sftp
-      if (nread != sftp_write(file, buffer, sizeof(buffer))){
+      if(nread!=sizeof(inputBuffer)) {inputBuffer[nread]='\0';}
+ 
+      if (nread != sftp_write(file, inputBuffer, nread)){
+      // if (nread != sftp_write(file, inputBuffer, sizeof(inputBuffer))){
         fprintf(stderr, "Error while reading file: %s\n", ssh_get_error(session));
         sftp_close(file);
         return SSH_ERROR;
@@ -264,16 +278,18 @@ int main(int argc, char *argv[]) {
           }
         } else if (inputBuffer[0] == 'p') { // in the ftp put command
           char *tmp_src = strtok(NULL, " "); // get the path where to store the file
-          memset(inputBuffer,'\0', sizeof(inputBuffer));
-          FILE *fp = fopen("put_tmp.md", "w");
-          while ((nrecv = recv(clientSockfd, inputBuffer, sizeof(inputBuffer), 0)) > 0) {
-            //printf("%s\n", inputBuffer);
-            fwrite(inputBuffer, 1, strlen(inputBuffer), fp); // write anything received from socket to the fd
-            memset(inputBuffer,'\0', sizeof(inputBuffer));
+          // sftp_put_file(my_ssh_session, my_sftp, tmp_src)
+          if (sftp_put_file(clientSockfd, my_ssh_session, my_sftp, tmp_src) == SSH_OK){
+
+          } else {
+            fprintf(stderr, "Socket file transfer failure\n");
+            break;
           }
+
           
-          fclose(fp);
-          printf("copy file complete\n");
+          
+          // fclose(fp);
+          // printf("copy file complete\n");
         } else {
           if (execute_remote_cmd(my_ssh_session, inputBuffer, &retval) != SSH_OK){
             fprintf(stderr, "SSH failure\n");

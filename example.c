@@ -13,7 +13,9 @@ int main(int argc , char *argv[]) {
     
     // char *retval = tnl_ssh_cmd("127.0.0.1", 8700, argv[1]);
     // tnl_get_sftp("127.0.0.1", 8700, "/home/IPP.tgz", "./ipp.tgz");
-    tnl_put_sftp("127.0.0.1", 8700, "README.md", "/home/amas/README2020.md");
+    // tnl_put_sftp("127.0.0.1", 8700, "README.md", "/home/amas/README2020.md");
+    tnl_put_sftp("140.116.82.242", 8700, "README.md", "/tmp/README.md");
+    // tnl_put_sftp("127.0.0.1", 8700, "README.md", "/tmp/README2020.md");
     // printf("%s", retval);
     // remember to free the return value !
     // free(retval);
